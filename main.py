@@ -4,11 +4,19 @@ from contextlib import asynccontextmanager
 from app.config import settings
 from app.database import init_db
 from app.routers import auth, clients, dashboard, tasks, modules, ml, metrics
+import os
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
+    # Auto-seed при первом запуске (если нет пользователей)
+    if os.getenv("AUTO_SEED", "true").lower() == "true":
+        try:
+            from app.seed import seed
+            await seed()
+        except Exception:
+            pass  # Если уже засеяно — игнорируем
     yield
 
 
@@ -19,9 +27,16 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        FRONTEND_URL,
+        "https://*.vercel.app",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
