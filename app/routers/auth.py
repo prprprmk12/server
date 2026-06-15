@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.database import get_db
 from app.models import User
-from app.auth import verify_password, create_access_token, get_password_hash, get_current_user
+from app.auth import verify_password, create_access_token, get_password_hash, get_current_user, is_password_too_long
 from app.schemas import Token, UserCreate, UserOut
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -26,6 +26,9 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSessi
 
 @router.post("/register", response_model=UserOut)
 async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
+    if is_password_too_long(user_data.password):
+        raise HTTPException(status_code=400, detail="Password must be at most 72 bytes")
+
     result = await db.execute(select(User).where(User.email == user_data.email))
     if result.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Email already registered")

@@ -12,13 +12,22 @@ from app.models import User
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token")
+BCRYPT_MAX_PASSWORD_BYTES = 72
+
+
+def is_password_too_long(password: str) -> bool:
+    return len(password.encode("utf-8")) > BCRYPT_MAX_PASSWORD_BYTES
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
+    if is_password_too_long(plain_password):
+        return False
     return pwd_context.verify(plain_password, hashed_password)
 
 
 def get_password_hash(password: str) -> str:
+    if is_password_too_long(password):
+        raise ValueError("Password must be at most 72 bytes")
     return pwd_context.hash(password)
 
 
