@@ -19,5 +19,7 @@ async def get_db():
 
 
 async def init_db():
+    # Импортируем модели здесь — иначе Base.metadata их не видит
+    from app import models  # noqa: F401
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

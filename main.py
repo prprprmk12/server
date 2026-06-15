@@ -15,8 +15,10 @@ async def lifespan(app: FastAPI):
         try:
             from app.seed import seed
             await seed()
-        except Exception:
-            pass  # Если уже засеяно — игнорируем
+        except Exception as e:
+            # Логируем но не падаем — таблицы уже созданы
+            import logging
+            logging.getLogger("uvicorn").warning(f"Seed warning (ok if already seeded): {e}")
     yield
 
 
@@ -29,14 +31,18 @@ app = FastAPI(
 
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
+# Собираем список разрешённых origins
+ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+if FRONTEND_URL and FRONTEND_URL not in ALLOWED_ORIGINS:
+    ALLOWED_ORIGINS.append(FRONTEND_URL)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        FRONTEND_URL,
-        "https://*.vercel.app",
-    ],
+    allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=r"https://.*\.vercel\.app",  # все vercel-домены через regex
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
